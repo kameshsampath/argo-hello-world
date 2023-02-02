@@ -1,5 +1,0 @@
-namespace: knative-serving
-resources:
-  - namespace.yaml
-  - serving.yml
-  - https://github.com/knative/serving/releases/download/knative-v1.8.3/serving-default-domain.yaml
