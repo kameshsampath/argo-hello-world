@@ -4,7 +4,9 @@ A demo to show case how to deploy the traditional Hello World application using 
 
 For this demo we will be using [ArgoCD](https://argo-cd.readthedocs.io/) as the GitOps platform on Kubernetes.
 
-## Tools
+## What is Required ?
+
+### Tools
 
 Download and add the following tools to your `$PATH`,
 
@@ -15,31 +17,36 @@ Download and add the following tools to your `$PATH`,
 - [GitHub CLI](https://github.com/cli/cli)
 - [yq](https://github.com/mikefarah/yq)
 
-## Whats  required
+>**IMPORTANT**: Ensure all the tools are available on your `$PATH` before proceeding further.
+
+### GitHub
 
 - [GitHub PAT](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token)
   
 - A GitHub user to fork the GitOps Demo Fork
 
-Once you have them set them as environment variable,
+### Environment Variables
+
+Copy `$GITOPS_DEMO_HOME/.env.example` --> `$GITOPS_DEMO_HOME/.env` and update the `.env` to update `$GITHUB_USER`, `$GITHUB_TOKEN`. Leave the `HELLO_WORLD_APP_FORK_REPO` as it is we will update it later.
+
+Load the environment variables on to current shell. Open a terminal window and navigate to `$GITOPS_DEMO_HOME` and run,
 
 ```shell
-export GITHUB_USER=<your github user name>
-export GITHUB_TOKEN=<your github PAT>
+source .env
 ```
 
->**TIP**: Its recommended to use [direnv](https://direnv.net) and dotenv(`.env`) files to manage your environment variables efficiently.
-
-## Fork the demo repo
-
-Run the following command to fork the demo repo under your account,
+**(OR)**
 
 ```shell
-gh repo fork <https://github.com/kameshsampath/argo-hello-world>
-cd argo-hello-world
+task reload_env
 ```
 
-For the rest of the tutorial this folder will be called as `$GITOPS_DEMO_HOME`.
+Test if all the variables are loaded successfully,
+
+```shell
+# should return the directory where you have cloned this demo sources
+echo $GITOPS_DEMO_HOME
+```
 
 ## Create Cluster
 
@@ -85,10 +92,14 @@ Open the Argo CD dashboard using the url <https://127.0.0.1:30080>, use the cred
 
 >**TIP**: You can change the admin password using `argocd account update-password`
 
-Deploy the infrastructure core component applications,
+The following sections ensure all the required infrastructure components are up and running,
+
+### Knative
+
+Deploy the infrastructure `knative` Argo CD application,
 
 ```shell
-task create_infrastructure_app
+task create_knative_app
 ```
 
 Synchronize the application,
@@ -99,9 +110,6 @@ argocd app sync knative
 
 Wait for few mins for the application to be synchronized, a successful sync will have `knative` application on argocd dashboard
 
-The following sections ensure all the required infrastructure components are up and running,
-
-### Knative
 
 ```shell
 watch kubectl get pods -n knative-serving
