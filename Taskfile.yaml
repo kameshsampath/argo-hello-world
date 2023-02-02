@@ -48,6 +48,10 @@ tasks:
        ignore_error: true
      - kubectl apply -k $GITOPS_DEMO_HOME/clusters/dev/argocd
      - kubectl rollout status -n argocd deploy/argocd-server --timeout=120s
+     - kubectl rollout status deployment -n argocd argocd-applicationset-controller --timeout=60s
+     - kubectl rollout status deployment -n argocd argocd-notifications-controller --timeout=60s
+     - kubectl rollout status deployment -n argocd argocd-dex-server --timeout=60s
+     - kubectl rollout status deployment -n argocd argocd-repo-server --timeout=60s 
      - argocd login --insecure --username admin --password {{.ARGOCD_ADMIN_PASSWORD}} $ARGOCD_SERVER_URL
      - printf "Argo CD Admin Password:{{.ARGOCD_ADMIN_PASSWORD}}"
     vars:
@@ -57,7 +61,8 @@ tasks:
     silent: true
     cmds:
       - |
-         yq '.spec.source.repoURL=strenv(GITOPS_REPO_URL)'  $GITOPS_DEMO_HOME/clusters/dev/infrastructure.yaml | kubectl apply -f -
+         yq '.spec.source.repoURL=strenv(GITOPS_REPO_URL)'  $GITOPS_DEMO_HOME/clusters/dev/infra-knative.yaml | kubectl apply -f -
+      - argocd app sync knative
     vars:
       GITOPS_REPO_URL:
         sh: gh repo view --json url -q '.url'
