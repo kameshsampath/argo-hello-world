@@ -1,0 +1,84 @@
+# https://taskfile.dev
+
+version: "3"
+
+dotenv:
+  - .env
+
+tasks:
+  create_work_dirs:
+    cmds:
+      - mkdir -p {{.KUBECONFIG_DIR}}
+      - mkdir -p work
+    vars:
+      KUBECONFIG_DIR:
+        sh: dirname $KUBECONFIG
+    silent: true
+  reload_env:
+    cmds:
+      - direnv allow .
+    silent: true
+  create_cluster:
+    cmds:
+      - k3d registry create "$REGISTRY_NAME" --port "$REGISTRY_PORT"
+      - k3d cluster create $K3D_CLUSTER_NAME -c cluster.yaml
+      - task: reload_env
+      # Docker push
+      - docker pull gcr.io/google-samples/hello-app:1.0
+      - docker tag gcr.io/google-samples/hello-app:1.0 "localhost:$REGISTRY_PORT/hello-app:1.0"
+      - docker push "localhost:$REGISTRY_PORT/hello-app:1.0"
+      ## Sanity Checks
+      - |
+        kubectl create deployment hello-server \
+         --image="k3d-$REGISTRY_NAME:$REGISTRY_PORT/hello-app:1.0"
+      - kubectl rollout status deployment.apps/hello-server --timeout=30s
+      - kubectl delete deployment.apps/hello-server
+    silent: true
+    ignore_error: true
+  delete_cluster:
+    cmds:
+      - k3d cluster delete -c cluster.yaml
+      - k3d registry delete "$K3D_CLUSTER_NAME-registry.localhost"
+    silent: true
+    ignore_error: true
+  bootstrap:
+    silent: true
+    cmds:
+     - cmd: kubectl create ns argocd
+       ignore_error: true
+     - kubectl apply -k $GITOPS_DEMO_HOME/clusters/dev/argocd
+     - kubectl rollout status -n argocd deploy/argocd-server --timeout=120s
+     - argocd app create guestbook --repo https://github.com/argoproj/argocd-example-apps.git --path guestbook --dest-server https://kubernetes.default.svc --dest-namespace default
+     - argocd login --insecure --username admin --password {{.ARGOCD_ADMIN_PASSWORD}} $ARGOCD_SERVER_URL
+     - printf "Argo CD Admin Password:{{.ARGOCD_ADMIN_PASSWORD}}"
+    vars:
+      ARGOCD_ADMIN_PASSWORD:
+        sh: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+  admin_password:
+    silent: true
+    cmds:
+      - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+  create_hello_world_source:
+    silent: true
+    generates:
+      - "$GITOPS_DEMO_HOME/clusters/dev/hello-world-source.yaml"
+    cmds:
+     - |
+        flux create source git hello-world \
+        --url=$HELLO_WORLD_APP_FORK_REPO \
+        --branch=main \
+        --interval=30s \
+        --export > $GITOPS_DEMO_HOME/clusters/dev/hello-world-source.yaml
+  create_hello_world_kustomization:
+    silent: true
+    generates:
+      - "$GITOPS_DEMO_HOME/clusters/dev/hello-world-kustomization.yaml"
+    cmds:
+     - |
+        flux create kustomization hello-world \
+        --target-namespace=default \
+        --source=hello-world \
+        --path="./config/serverless" \
+        --prune=true \
+        --interval=5m \
+        --export > $GITOPS_DEMO_HOME/clusters/dev/hello-world-kustomization.yaml

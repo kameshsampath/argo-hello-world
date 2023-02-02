@@ -1,0 +1,75 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+kind: Kustomization
+metadata:
+  name: infra-controllers
+  namespace: flux-system
+spec:
+  interval: 1h
+  retryInterval: 1m
+  timeout: 5m
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  path: ./infrastructure/controllers
+  prune: true
+  wait: true
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+kind: Kustomization
+metadata:
+  name: infra-knative-serving
+  namespace: flux-system
+spec:
+  interval: 5m0s
+  path: ./infrastructure/knative/serving
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  patches:
+    - patch: |-
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: config-network
+          namespace: knative-serving
+        data:
+          ingress-class: kourier.ingress.networking.knative.dev
+      target:
+        name: config-network
+        kind: ConfigMap
+        namespace: knative-serving
+    - patch: |-
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: config-domain
+          namespace: knative-serving
+        data: {"127.0.0.1.sslip.io": ""}  
+      target:
+        name: config-domain
+        kind: ConfigMap
+        namespace: knative-serving
+    - patch: |-
+        apiVersion: v1
+        kind: Service
+        metadata:
+          name: kourier
+          namespace: kourier-system
+        spec:
+          ports:
+            - name: http2
+              port: 80
+              protocol: TCP
+              targetPort: 8080
+              nodePort: 30080
+            - name: https
+              port: 443
+              protocol: TCP
+              targetPort: 8443
+              nodePort: 30443
+      target:
+        name: kourier
+        kind: Service
+        namespace: kourier-system

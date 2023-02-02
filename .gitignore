@@ -1,0 +1,4 @@
+.env*
+!.envrc
+work
+**/hello-world-*.yaml
