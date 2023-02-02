@@ -2,17 +2,18 @@
 
 A demo to show case how to deploy the traditional Hello World application using [GitOps](https://www.gitops.tech/). The goal of this demo is to get started with GitOps on your laptops, understand its principles etc.,
 
-For this demo we will be using [FluxCD](https://fluxcd.io/) as the GitOps platform on Kubernetes.
+For this demo we will be using [ArgoCD](https://argo-cd.readthedocs.io/) as the GitOps platform on Kubernetes.
 
 ## Tools
 
 Download and add the following tools to your `$PATH`,
 
 - [Task](https://taskfile.dev/)
-- [Flux](https://fluxcd.io/flux/cmd/)
+- [ArgoCD CLI](https://argo-cd.readthedocs.io/en/stable/cli_installation/)
 - [K3D](https://k3d.io)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 - [GitHub CLI](https://github.com/cli/cli)
+- [yq](https://github.com/mikefarah/yq)
 
 ## Whats  required
 
@@ -20,13 +21,22 @@ Download and add the following tools to your `$PATH`,
   
 - A GitHub user to fork the GitOps Demo Fork
 
+Once you have them set them as environment variable,
+
+```shell
+export GITHUB_USER=<your github user name>
+export GITHUB_TOKEN=<your github PAT>
+```
+
+>**TIP**: Its recommended to use [direnv](https://direnv.net) and dotenv(`.env`) files to manage your environment variables efficiently.
+
 ## Fork the demo repo
 
 Run the following command to fork the demo repo under your account,
 
 ```shell
-gh repo fork <https://github.com/kameshsampath/flux-hello-world>
-cd flux-hello-world
+gh repo fork <https://github.com/kameshsampath/argo-hello-world>
+cd argo-hello-world
 ```
 
 For the rest of the tutorial this folder will be called as `$GITOPS_DEMO_HOME`.
@@ -49,35 +59,52 @@ Metrics-server is running at https://0.0.0.0:62779/api/v1/namespaces/kube-system
 
 ## Bootstrap
 
-The demo setup will have the following components,
+The demo setup will have the following core infrastructure components,
 
-- FluxCD   - the GitOps platform
+- ArgoCD   - the GitOps platform
 - Knative  - the serverless platform to deploy our services
-- Weave GitOps OSS - the GitOps UI Dashboard
 
 Run the following command to bootstrap FluxCD and all other infrastructure components,
 
-> ***TIP**: All the commands we run as part of this demo has task associated. E.g. The following bootstrap command can be run using `task bootstrap`
+> ***TIP**: All the commands we run as part of this demo has task associated. E.g. The following bootstrap command can be run using `task bootstrap`. Check the [Taskfile](./Taskfile.yml) for th detailed command that gets executed.
 
 ```shell
-flux bootstrap github \
-  --owner=$GITHUB_USER \
-  --repository=flux-hello-world \
-  --branch=main \
-  --personal \
-  --path=./clusters/dev
+task bootstrap
 ```
 
-The command instructs flux to hook the repo `$GITHUB_USER/flux-hello-world` and start watching it for changes on branch `main`, path `./clusters/dev`.
+The command does the following,
+
+- `kubectl create ns argocd` - creates a namespace _argocd_ where all Argo CD components are installed
+- `kubectl apply -k $GITOPS_DEMO_HOME/clusters/dev/argocd` - installs Argo CD using the kustomization from the directory _$GITOPS_DEMO_HOME/clusters/dev/argocd_
+- `argocd login --insecure --username admin --password {{.ARGOCD_ADMIN_PASSWORD}} $ARGOCD_SERVER_URL` - does a intial login to the Argo CD server.
+- Finally prints the Argo CD admin password that was generated during install.
 
 >**NOTE**: It will take few mins for bootstrap to complete, depending upon your bandwidth.
 
-Ensure all the required infrastructure components are up and running,
+Open the Argo CD dashboard using the url <https://127.0.0.1:30080>, use the credentials `admin` and password printed during the bootstrap.
+
+>**TIP**: You can change the admin password using `argocd account update-password`
+
+Deploy the infrastructure core component applications,
+
+```shell
+task create_infrastructure_app
+```
+
+Synchronize the application,
+
+```shell
+argocd app sync knative
+```
+
+Wait for few mins for the application to be synchronized, a successful sync will have `knative` application on argocd dashboard
+
+The following sections ensure all the required infrastructure components are up and running,
 
 ### Knative
 
 ```shell
-kubectl get pods -n knative-serving
+watch kubectl get pods -n knative-serving
 ```
 
 ```shell
@@ -172,18 +199,6 @@ Clean up the test service using the command,
 kubectl delete ksvc helloworld-go
 ```
 
-### GitOps UI
-
-For this demo we will be using [Weave GitOps OSS](https://github.com/weaveworks/weave-gitops) for UI and Dashboard.
-
-Check if the Weave GitOps OSS dashboard is up,
-
-```shell
-kubectl rollout status -n flux-system deploy/weave-gitops --timeout=60s
-```
-
-Once its running its accessible via <http://127.0.0.1.sslip.io:30091>. The default user credentials is `admin/flux`.
-
 ## Deploy Hello World Application
 
 Let's create the required GitOps resources for deploying <https://github.com/kameshsampath/go-hello-world>.
@@ -199,55 +214,25 @@ export HELLO_WORLD_APP_FORK_REPO=$(gh repo view --json url -q '.url')
 
 Let us call your <https://github.com/kameshsampath/go-hello-world> fork as `$HELLO_WORLD_APP_FORK_REPO`.
 
-## Git Repository Source
+Edit the file `$GITOPS_DEMO_HOME/argo-hello-world/clusters/dev/hello-world.yaml` and update the `https://github.com/kameshsampath/go-hello-world` to point to `$HELLO_WORLD_APP_FORK_REPO`.
 
-Create the [GitRepository](https://fluxcd.io/flux/cmd/flux_create_source_git/) which will watched for manifest changes,
-
-```shell
-flux create source git hello-world \
-  --url=$HELLO_WORLD_APP_FORK_REPO \
-  --branch=main \
-  --interval=30s \
-  --export > ./clusters/dev/hello-world/hello-world-source.yaml
-```
-
->**Tip**: task create_hello_world_source
+Save, commit and push the code.
 
 ## Deploy Application using GitOps
 
 As we will be using kustomize to deploy the application, let us create the Flux kustomization resource that will watch for manifest changes on Git repository `$HELLO_WORLD_APP_FORK_REPO`,
 
 ```shell
-flux create kustomization hello-world \
-  --target-namespace=default \
-  --source=hello-world \
-  --path="./config/serverless" \
-  --prune=true \
-  --interval=5m \
-  --export > ./clusters/dev/hello-world-kustomization.yaml
+kubectl apply -k $GITOPS_DEMO_HOME/clusters/dev/hello-world.yaml
 ```
 
->**Tip**: task create_hello_world_kustomization
-
-After you have created these files, edit `$GITOPS_DEMO_HOME/.gitignore` and remove the entry `**/hello-world-*.yaml` to allow these files to be committed. Add, commit and push the changes to your(fork) repository.
-
-Start to watch for flux to synchronize the resources, you can also watch it from the Web Console <http://127.0.0.1.sslip.io:30091/applications>,
+Trigger sync,
 
 ```shell
-flux get kustomizations --watch
+argocd app sync hello-world
 ```
 
-A successful sync should show an output like( output trimmed for brevity),
-
-```shell
-NAME            REVISION        SUSPENDED       READY   MESSAGE                        
-flux-system     main/c85869d    False           True    Applied revision: main/c85869d
-infra-controllers       main/c85869d    False   True    Applied revision: main/c85869d
-infra-knative-serving   main/c85869d    False   True    Applied revision: main/c85869d
-hello-world     main/89db5d2    False   True    Applied revision: main/89db5d2
-```
-
-**(OR)**
+A successful sync should show the `hello-world` application on Argo CD dashboard,
 
 ![Hello World Sync](./docs/hello-world-sync.png)
 
@@ -283,7 +268,7 @@ curl http://hello-world.default.127.0.0.1.sslip.io:30080?name=Newton
 
 As part of this change we will make the service use the greeting prefix as **Hi**. To do that we will update the service containers environment variable `GREETING_PREFIX`.
 
-Edit the file `$GITOPS_DEMO_HOME/clusters/dev/hello-world-kustomization.yaml` and update it to look as shown,
+Edit the file `$GITOPS_DEMO_HOME/apps/hello-world/kustomization.yaml` and update it to look as shown,
 
 ```yaml
 ---
@@ -322,7 +307,7 @@ spec:
         kind: Service
 ```
 
-Save, commit and push the changes back to `flux-hello-world` repository. The push should trigger as sync in few seconds.
+Save, commit and push the changes back to `argo-hello-world` repository. The push should trigger as sync in few seconds.
 
 Open a new terminal and watch for the `hello-world` service,
 
@@ -363,5 +348,5 @@ task delete_cluster
 
 ## References
 
-- [FluxCD Guides](https://fluxcd.io/flux/guides/)
-- [Usecases](https://fluxcd.io/flux/use-cases/)
+- [ArgoCD Guides](https://argo-cd.readthedocs.io/en/stable/user-guide/)
+- [Operator Manual](https://argo-cd.readthedocs.io/en/stable/operator-manual/)

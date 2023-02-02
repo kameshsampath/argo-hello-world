@@ -48,37 +48,29 @@ tasks:
        ignore_error: true
      - kubectl apply -k $GITOPS_DEMO_HOME/clusters/dev/argocd
      - kubectl rollout status -n argocd deploy/argocd-server --timeout=120s
-     - argocd app create guestbook --repo https://github.com/argoproj/argocd-example-apps.git --path guestbook --dest-server https://kubernetes.default.svc --dest-namespace default
      - argocd login --insecure --username admin --password {{.ARGOCD_ADMIN_PASSWORD}} $ARGOCD_SERVER_URL
      - printf "Argo CD Admin Password:{{.ARGOCD_ADMIN_PASSWORD}}"
     vars:
       ARGOCD_ADMIN_PASSWORD:
         sh: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+  create_infrastructure_app:
+    silent: true
+    cmds:
+      - |
+         yq '.spec.source.repoURL=strenv(GITOPS_REPO_URL)'  $GITOPS_DEMO_HOME/clusters/dev/infrastructure.yaml | kubectl apply -f -
+    vars:
+      GITOPS_REPO_URL:
+        sh: gh repo view --json url -q '.url'
+  create_hello_world_app:
+    silent: true
+    dir: ./work/go-hello-world
+    cmds:
+      - |
+        yq '.spec.source.repoURL=strenv(GITOPS_REPO_URL)'  $GITOPS_DEMO_HOME/clusters/dev/hello-world.yaml | kubectl apply -f -
+    vars:
+      GITOPS_REPO_URL:
+        sh: gh repo view --json url -q '.url'
   admin_password:
     silent: true
     cmds:
       - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-  create_hello_world_source:
-    silent: true
-    generates:
-      - "$GITOPS_DEMO_HOME/clusters/dev/hello-world-source.yaml"
-    cmds:
-     - |
-        flux create source git hello-world \
-        --url=$HELLO_WORLD_APP_FORK_REPO \
-        --branch=main \
-        --interval=30s \
-        --export > $GITOPS_DEMO_HOME/clusters/dev/hello-world-source.yaml
-  create_hello_world_kustomization:
-    silent: true
-    generates:
-      - "$GITOPS_DEMO_HOME/clusters/dev/hello-world-kustomization.yaml"
-    cmds:
-     - |
-        flux create kustomization hello-world \
-        --target-namespace=default \
-        --source=hello-world \
-        --path="./config/serverless" \
-        --prune=true \
-        --interval=5m \
-        --export > $GITOPS_DEMO_HOME/clusters/dev/hello-world-kustomization.yaml
