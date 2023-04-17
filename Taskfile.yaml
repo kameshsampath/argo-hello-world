@@ -92,7 +92,7 @@ tasks:
     silent: false
     cmds:
       - |
-        kustomize build ./apps/oci/flamingo | flux push artifact oci://$FLAMINGO_MANIFESTS_OCI_REPO \
+        kustomize build ./apps/oci/flamingo | flux push artifact oci://"$FLAMINGO_MANIFESTS_OCI_REPO:$ARGOCD_VERSION" \
         --annotations="org.opencontainers.image.source=$(git config --get remote.origin.url)" \
         --path - \
         --source="$(git config --get remote.origin.url)" \

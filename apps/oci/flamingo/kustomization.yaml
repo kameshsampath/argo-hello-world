@@ -1,3 +1,5 @@
+namespace: argocd
+
 resources:
   - namespace.yaml
   - https://github.com/flux-subsystem-argo/flamingo//demo/artifacts/fsa-installation
@@ -9,6 +11,7 @@ patches:
       metadata:
         name: argocd-server
       spec:
+        type: LoadBalancer
         ports:
         - name: http
           port: 80

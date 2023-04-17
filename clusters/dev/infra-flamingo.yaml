@@ -4,6 +4,8 @@ kind: OCIRepository
 metadata:
   name: flamingo
   namespace: flux-system
+  annotations:
+    metadata.weave.works/flamingo-fsa-installation: "https://localhost:8080/applications/argocd/fsa-installation?view=tree"
 spec:
   interval: 30s
   url: oci://ghcr.io/kameshsampath/manifests/flamingo
@@ -15,6 +17,8 @@ kind: Kustomization
 metadata:
   name: flamingo
   namespace: flux-system
+  annotations:
+    metadata.weave.works/flamingo-fsa-demo: "https://localhost:8080/applications/argocd/fsa-demo?view=tree"
 spec:
   prune: true
   interval: 2m
