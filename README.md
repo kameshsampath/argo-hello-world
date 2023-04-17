@@ -2,7 +2,7 @@
 
 A demo to show case how to deploy the traditional Hello World application using [GitOps](https://www.gitops.tech/). The goal of this demo is to get started with GitOps on your laptops, understand its principles etc.,
 
-For this demo we will be using [ArgoCD](https://argo-cd.readthedocs.io/) as the GitOps platform on Kubernetes.
+The demo will leverage [flamingo](https://github.com/kameshsampath/flamingo) to allow us to use either [FluxCD](https://fluxcd.io) or [ArgoCD](https://argo-cd.readthedocs.io/) as our GitOps platform, leveraging the power of both.
 
 ## What is Required ?
 
@@ -11,6 +11,7 @@ For this demo we will be using [ArgoCD](https://argo-cd.readthedocs.io/) as the 
 Download and add the following tools to your `$PATH`,
 
 - [Task](https://taskfile.dev/)
+- [Flux CLI](https://fluxcd.io/flux/installation/#install-the-flux-cli)
 - [ArgoCD CLI](https://argo-cd.readthedocs.io/en/stable/cli_installation/)
 - [K3D](https://k3d.io)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
@@ -68,7 +69,8 @@ Metrics-server is running at https://0.0.0.0:62779/api/v1/namespaces/kube-system
 
 The demo setup will have the following core infrastructure components,
 
-- ArgoCD   - the GitOps platform
+- Flux     - the GitOps platform
+- Flamingo - the Flux Subsystem for Argo(FSA)
 - Knative  - the serverless platform to deploy our services
 
 Run the following command to bootstrap FluxCD and all other infrastructure components,
@@ -81,14 +83,12 @@ task bootstrap
 
 The command does the following,
 
-- `kubectl create ns argocd` - creates a namespace _argocd_ where all Argo CD components are installed
-- `kubectl apply -k $GITOPS_DEMO_HOME/clusters/dev/argocd` - installs Argo CD using the kustomization from the directory _$GITOPS_DEMO_HOME/clusters/dev/argocd_
-- `argocd login --insecure --username admin --password {{.ARGOCD_ADMIN_PASSWORD}} $ARGOCD_SERVER_URL` - does a intial login to the Argo CD server.
-- Finally prints the Argo CD admin password that was generated during install.
+- `flux install` - installs fluxcd on to the cluster
+- `kubectl apply -k $GITOPS_DEMO_HOME/flamingo` - installs FSA
 
 >**NOTE**: It will take few mins for bootstrap to complete, depending upon your bandwidth.
 
-Open the Argo CD dashboard using the url <https://127.0.0.1:30080>, use the credentials `admin` and password printed during the bootstrap.
+Open the Flamingo dashboard using the url <https://127.0.0.1:30080>, use the credentials `admin` and password printed during the bootstrap.
 
 >**TIP**: You can change the admin password using `argocd account update-password`
 
@@ -222,7 +222,7 @@ export HELLO_WORLD_APP_FORK_REPO=$(gh repo view --json url -q '.url')
 
 Let us call your <https://github.com/kameshsampath/go-hello-world> fork as `$HELLO_WORLD_APP_FORK_REPO`.
 
-Edit the file `$GITOPS_DEMO_HOME/argo-hello-world/clusters/dev/hello-world.yaml` and update the `https://github.com/kameshsampath/go-hello-world` to point to `$HELLO_WORLD_APP_FORK_REPO`.
+Edit the file `$GITOPS_DEMO_HOME/argo-hello-world/argo/apps/hello-world.yaml` and update the `https://github.com/kameshsampath/go-hello-world` to point to `$HELLO_WORLD_APP_FORK_REPO`.
 
 Save, commit and push the code.
 
@@ -231,13 +231,7 @@ Save, commit and push the code.
 As we will be using kustomize to deploy the application, let us create the Flux kustomization resource that will watch for manifest changes on Git repository `$HELLO_WORLD_APP_FORK_REPO`,
 
 ```shell
-kubectl apply -k $GITOPS_DEMO_HOME/clusters/dev/hello-world.yaml
-```
-
-Trigger sync,
-
-```shell
-argocd app sync hello-world
+kubectl apply -k $GITOPS_DEMO_HOME/argo/apps/hello-world.yaml
 ```
 
 A successful sync should show the `hello-world` application on Argo CD dashboard,
@@ -357,4 +351,6 @@ task delete_cluster
 ## References
 
 - [ArgoCD Guides](https://argo-cd.readthedocs.io/en/stable/user-guide/)
-- [Operator Manual](https://argo-cd.readthedocs.io/en/stable/operator-manual/)
+- [FluxCD Guides](https://fluxcd.io/flux/)
+- [Flamingo](https://github.com/flux-subsystem-argo/flamingo)
+  

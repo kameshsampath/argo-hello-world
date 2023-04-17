@@ -45,8 +45,13 @@ tasks:
   bootstrap:
     silent: true
     cmds:
-      - flux install
-      - kubectl apply -k flamingo
+      - |
+        flux bootstrap github \
+        --owner=$GITHUB_USER \
+        --repository=argo-hello-world \
+        --branch=flamingo \
+        --personal \
+        --path=./clusters/dev
       - until kubectl get ns argocd &>/dev/null;do sleep 5s;done;
       - kubectl rollout status -n argocd  deployment.apps/argocd-notifications-controller --timeout=180s
       - kubectl rollout status -n argocd  deployment.apps/argocd-applicationset-controller --timeout=180s
@@ -72,9 +77,23 @@ tasks:
     vars:
       GITOPS_REPO_URL:
         sh: gh repo view --json url -q '.url'
+  
   argocd_admin_password:
     silent: true
     aliases:
       - admin_password
     cmds:
       - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+  
+  flamingo_oci_manifests:
+    aliases:
+      - flamingo_manifests
+      - oci_manifests
+    silent: false
+    cmds:
+      - |
+        kustomize build ./apps/oci/flamingo | flux push artifact oci://$FLAMINGO_MANIFESTS_OCI_REPO \
+        --annotations="org.opencontainers.image.source=$(git config --get remote.origin.url)" \
+        --path - \
+        --source="$(git config --get remote.origin.url)" \
+        --revision="flamingo@sha1:$(git rev-parse HEAD)"
