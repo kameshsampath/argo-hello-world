@@ -1,0 +1,5 @@
+namespace: flux-system
+  
+resources:
+  - repo.yaml
+  - app-kustomization.yaml

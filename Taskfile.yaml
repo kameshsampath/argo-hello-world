@@ -1,5 +1,4 @@
 # https://taskfile.dev
-
 version: "3"
 
 dotenv:
@@ -19,6 +18,8 @@ tasks:
       - source .env
     silent: true
   create_cluster:
+    deps:
+    - create_work_dirs
     cmds:
       - k3d registry create "$REGISTRY_NAME" --port "$REGISTRY_PORT"
       - k3d cluster create $K3D_CLUSTER_NAME -c cluster.yaml
@@ -44,37 +45,36 @@ tasks:
   bootstrap:
     silent: true
     cmds:
-     - cmd: kubectl create ns argocd
-       ignore_error: true
-     - kubectl apply -k $GITOPS_DEMO_HOME/clusters/dev/argocd
-     - kubectl rollout status -n argocd deploy/argocd-server --timeout=120s
-     - kubectl rollout status deployment -n argocd argocd-applicationset-controller --timeout=60s
-     - kubectl rollout status deployment -n argocd argocd-notifications-controller --timeout=60s
-     - kubectl rollout status deployment -n argocd argocd-dex-server --timeout=60s
-     - kubectl rollout status deployment -n argocd argocd-repo-server --timeout=60s
-     - printf "Argo CD Admin Password:{{.ARGOCD_ADMIN_PASSWORD}}"
+      - flux install
+      - kubectl apply -k flamingo
+      - until kubectl get ns argocd &>/dev/null;do sleep 5s;done;
+      - kubectl rollout status -n argocd  deployment.apps/argocd-notifications-controller --timeout=180s
+      - kubectl rollout status -n argocd  deployment.apps/argocd-applicationset-controller --timeout=180s
+      - kubectl rollout status -n argocd  deployment.apps/argocd-server  --timeout=180s
+      - kubectl rollout status -n argocd  deployment.apps/argocd-repo-server   --timeout=180s
+      - kubectl rollout status -n argocd  deployment.apps/argocd-repo-server   --timeout=180s
+
   create_knative_app:
     silent: true
     cmds:
-      - argocd login --insecure --username admin --password {{.ARGOCD_ADMIN_PASSWORD}} $ARGOCD_SERVER_URL
       - |
-         yq '.spec.source.repoURL=strenv(GITOPS_REPO_URL)'  $GITOPS_DEMO_HOME/clusters/dev/infra-knative.yaml | kubectl apply -f -
-      - argocd app sync knative
+        yq '.spec.source.repoURL="{{.GITOPS_REPO_URL}}"'  $GITOPS_DEMO_HOME/argo/apps/infra-knative.yaml | kubectl apply -f -
     vars:
-      ARGOCD_ADMIN_PASSWORD:
-        sh: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
       GITOPS_REPO_URL:
         sh: gh repo view --json url -q '.url'
+  
   create_hello_world_app:
     silent: true
     dir: ./work/go-hello-world
     cmds:
       - |
-        yq '.spec.source.repoURL=strenv(GITOPS_REPO_URL)'  $GITOPS_DEMO_HOME/clusters/dev/hello-world.yaml | kubectl apply -f -
+        yq '.spec.source.repoURL="{{.GITOPS_REPO_URL}}"'  $GITOPS_DEMO_HOME/argo/apps/hello-world.yaml
     vars:
       GITOPS_REPO_URL:
         sh: gh repo view --json url -q '.url'
-  admin_password:
+  argocd_admin_password:
     silent: true
+    aliases:
+      - admin_password
     cmds:
       - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d

@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: ${GITOPS_REPO_URL}
-    targetRevision: HEAD
-    path: infrastructure/knative/serving
+    targetRevision: flamingo
+    path: infrastructure/knative
   destination:
     server: https://kubernetes.default.svc
