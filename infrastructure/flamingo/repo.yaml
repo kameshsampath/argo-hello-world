@@ -1,9 +1,0 @@
-apiVersion: source.toolkit.fluxcd.io/v1beta2
-kind: OCIRepository
-metadata:
-  name: flamingo
-spec:
-  interval: 30s
-  url: oci://ghcr.io/kameshsampath/manifests/flamingo
-  ref:
-    tag: v2.6

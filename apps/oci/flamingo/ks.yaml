@@ -1,0 +1,24 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+kind: Kustomization
+metadata:
+  name: fsa-installation
+  namespace: argocd
+  annotations:
+    metadata.weave.works/flamingo-fsa-installation: "https://localhost:8080/applications/argocd/fsa-installation?view=tree"
+spec:
+  prune: true
+  interval: 2m
+  path: "./fsa"
+  sourceRef:
+    kind: OCIRepository
+    name: flamingo
+    namespace: flux-system
+  timeout: 10m
+  targetNamespace: argocd
+  wait: true
