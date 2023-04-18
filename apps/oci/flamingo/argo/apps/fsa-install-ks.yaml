@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: flamingo-installation
+  name: flamingo-core
   namespace: argocd
   annotations:
     weave.gitops.flamingo/base-url: "http://localhost:9001"
