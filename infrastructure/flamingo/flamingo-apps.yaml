@@ -12,7 +12,6 @@ spec:
     kind: OCIRepository
     name: flamingo
     namespace: flux-system
-  targetNamespace: argocd
   timeout: 3m
   dependsOn:
     - name: flamingo-core
