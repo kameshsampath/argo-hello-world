@@ -5,7 +5,7 @@ metadata:
   name: flamingo-core
   namespace: flux-system
   annotations:
-    metadata.weave.works/flamingo-flamingo-core: "https://localhost:8080/applications/argocd/flamingo-core?view=tree"
+    metadata.weave.works/flamingo-flamingo-core: "https://localhost:30443/applications/argocd/flamingo-core?view=tree"
 spec:
   prune: true
   interval: 2m

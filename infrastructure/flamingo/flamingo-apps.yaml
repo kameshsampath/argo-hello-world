@@ -5,7 +5,7 @@ metadata:
   name: flamingo-apps
   namespace: flux-system
   annotations:
-    metadata.weave.works/flamingo-flamingo-apps: "https://localhost:8080/applications/argocd/flamingo-apps?view=tree"
+    metadata.weave.works/flamingo-flamingo-apps: "https://localhost:30443/applications/argocd/flamingo-apps?view=tree"
 spec:
   prune: true
   interval: 2m
