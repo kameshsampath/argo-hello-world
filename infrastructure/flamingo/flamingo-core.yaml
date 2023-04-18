@@ -1,0 +1,16 @@
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1beta2
+kind: Kustomization
+metadata:
+  name: flamingo-core
+  namespace: flux-system
+spec:
+  prune: true
+  interval: 2m
+  path: "./core"
+  sourceRef:
+    kind: OCIRepository
+    name: flamingo
+    namespace: flux-system
+  timeout: 3m
+  wait: true

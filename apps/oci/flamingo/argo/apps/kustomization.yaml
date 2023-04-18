@@ -1,0 +1,3 @@
+resources:
+  - fsa-apps-ks.yaml
+  - fsa-install-ks.yaml

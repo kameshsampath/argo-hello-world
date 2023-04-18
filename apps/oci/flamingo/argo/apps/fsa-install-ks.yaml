@@ -1,0 +1,22 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: flamingo-installation
+  namespace: argocd
+  annotations:
+    weave.gitops.flamingo/base-url: "http://localhost:9001"
+    weave.gitops.flamingo/cluster-name: "Default"
+spec:
+  destination:
+    namespace: argocd
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    path: ./core
+    repoURL: oci://ghcr.io/kameshsampath/manifests/flamingo
+    targetRevision: v2.6
+  syncPolicy:
+    syncOptions:
+    - ApplyOutOfSyncOnly=true
+    - FluxSubsystem=true

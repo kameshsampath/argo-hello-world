@@ -1,0 +1,4 @@
+resources:
+  - repo.yaml
+  - flamingo-core.yaml
+  - flamingo-apps.yaml

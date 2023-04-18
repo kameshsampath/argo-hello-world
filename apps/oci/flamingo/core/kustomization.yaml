@@ -1,6 +1,8 @@
-namespace: argocd
-
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
 resources:
+  - namespace.yaml
   - https://github.com/flux-subsystem-argo/flamingo//demo/artifacts/fsa-installation
 
 patches:
