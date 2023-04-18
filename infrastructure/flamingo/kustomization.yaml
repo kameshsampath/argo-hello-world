@@ -1,5 +1,4 @@
 resources:
-  - namespace.yaml
   - repo.yaml
   - flamingo-core.yaml
   - flamingo-apps.yaml

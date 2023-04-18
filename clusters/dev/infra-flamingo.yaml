@@ -12,3 +12,8 @@ spec:
     kind: GitRepository
     name: flux-system
   targetNamespace: flux-system
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: argocd
