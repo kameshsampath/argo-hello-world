@@ -13,4 +13,5 @@ spec:
     name: flamingo
     namespace: flux-system
   timeout: 3m
+  targetNamespace: argocd
   wait: true
